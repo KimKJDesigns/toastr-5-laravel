@@ -45,11 +45,17 @@ class Toastr {
      * @internal param bool $flashed Whether to get the
      *
      */
-    public function render() {
+    public function render($defer = false) {
         $notifications = $this->session->get('toastr::notifications');
         if(!$notifications) $notifications = [];
 
         $output = '<script type="text/javascript">';
+        if($defer) {
+            $output = 'window.addEventListener("DOMContentLoaded", function() {
+            (function($) {
+                $(document).ready(function() {
+                    $(function(){';
+        };
         $lastConfig = [];
         foreach($notifications as $notification) {
 
@@ -65,13 +71,19 @@ class Toastr {
 
             // Config persists between toasts
             if($config != $lastConfig) {
-                $output .= 'toastr.options = ' . json_encode($config) . ';';   
+                $output .= 'toastr.options = ' . json_encode($config) . ';';
                 $lastConfig = $config;
             }
 
             // Toastr output
             $output .= 'toastr.' . $notification['type'] . "('" .  str_replace("'", "\\'", $notification['message']). "'" . (isset($notification['title']) ? ", '" . str_replace("'", "\\'", htmlentities($notification['title'])) . "'" : null) . ');';
         }
+        if($defer) {
+            $output = '});
+                });
+            })(jQuery);
+        });';
+        };
         $output .= '</script>';
 
         return $output;
@@ -84,7 +96,7 @@ class Toastr {
      * @param string $message The notification's message
      * @param string $title The notification's title
      *
-     * @return bool Returns whether the notification was successfully added or 
+     * @return bool Returns whether the notification was successfully added or
      * not.
      */
     public function add($type, $message, $title = null,$options = []) {
